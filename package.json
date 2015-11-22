@@ -1,0 +1,22 @@
+{
+  "name": "blockserver",
+  "version": "1.0.0",
+  "description": "server to distribute and verify blocks",
+  "main": "blockServer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Siryu/blockServer.git"
+  },
+  "author": "Corey Massey",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Siryu/blockServer/issues"
+  },
+  "homepage": "https://github.com/Siryu/blockServer#readme",
+  "dependencies": {
+    "express": "^4.13.3"
+  }
+}
