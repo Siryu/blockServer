@@ -1,16 +1,40 @@
 var express = require('express')
+var bodyParser = require('body-parser')
+var port = 43214
 var app = express()
 
-app.get('/getBlock/', function (req, res) {
-  // do validation to see where in the block they are before sending out
-  // may just need to continue on from where they are
-  res.send('You just got a block yo!')
+// configure app to allow us to parse body content from post
+//=========================================================
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.json())
+//=========================================================
+
+// create routes for our API
+//=========================================================
+var router = express.Router()
+
+router.use(function(req, res, next) {
+  console.log('we recieved a request ...')
+  next()
 })
 
-app.get('/getNewest/', function (req, res) {
-  // just testing to see about get functions
-  res.send('You just got the newest block yo!')
+router.get('/', function(req, res) {
+  res.json({ message: 'yay!!! the api responded to you!' })
 })
+// register all routes here
+//=========================================================
 
+//all our routes will be prefixed with /api
+app.use('/api', router)
 
-app.listen(43214)
+// Start the server
+// ========================================================
+app.listen(port)
+console.log('Block Server started .....')
+
+//
+// /api/bears	GET	Get all the bears.
+// /api/bears	POST	Create a bear.
+// /api/bears/:bear_id	GET	Get a single bear.
+// /api/bears/:bear_id	PUT	Update a bear with new info.
+// /api/bears/:bear_id	DELETE	Delete a bear.
