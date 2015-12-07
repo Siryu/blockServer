@@ -64,16 +64,16 @@ var start = function() {
   var pool = {'name':'', 'address':remoteIp, 'port': remotePort};
   pools.push(pool)
 
-  var remoteAPI = '/api/subscribe'
-  request({
-    url: remoteIp + ":" + remotePort + remoteAPI,
-    method: 'POST',
-    json: true,
-    body: {'name': name, 'port': localPort}
-  },
-   function(error, res, body) {
-    console.log('got a response for registering......', res.statusCode)
-  })
+  //var remoteAPI = '/api/subscribe'
+  //request({
+  //  url: remoteIp + ":" + remotePort + remoteAPI,
+  //  method: 'POST',
+  //  json: true,
+  //  body: {'name': name, 'port': localPort}
+  //},
+  // function(error, res, body) {
+  //  console.log('got a response for registering......', res.statusCode)
+  //})
 }
 
 // configure app to allow us to parse body content from post
