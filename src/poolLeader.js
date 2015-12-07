@@ -172,5 +172,10 @@ app.use('/api', router)
 // Start the server
 // ========================================================
 start()
-app.listen(localPort)
+
+app.set('port', (process.env.PORT || 5000))
+app.listen(app.get('port'), function() {
+  console.log("Application running on port", app.get('port'));
+});
+//app.listen(localPort)
 console.log('Pool Host Started .....')
