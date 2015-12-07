@@ -1,14 +1,12 @@
-var transactions = []
 var header
+var canBeSpent
+var coinValue
+var value
+var secondTransaction
 
 var block = {
-
-  addTransaction : function(transaction) {
-  transactions.push(transaction)
-  },
-  
-  removeAllTransactions : function() {
-    transactions = []
+  createBlock : function(lastBlock, amount) {
+    return { 'header': lastBlock.value, 'coinValue': amount, 'value': lastBlock.value + 1, 'canBeSpent': true}
   }
 }
 
