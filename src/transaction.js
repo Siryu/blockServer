@@ -1,4 +1,4 @@
-var String.prototype.hashCode = function(){
+String.prototype.hashCode = function(){
     var hash = 0;
     if (this.length == 0) return hash
     for (i = 0; i < this.length; i++) {
@@ -9,11 +9,11 @@ var String.prototype.hashCode = function(){
     return hash
 }
 
-
 var transaction = {
-  createTransactionObject : function(senderId, receiverId, amount, time) {
-    return {'senderId':senderId, 'receiverId':receiverId, 'amount':amount, 'time':time}
-  }
+  createTransactionObject : function(sendingBlockAddress, receivingBockAddress, amount, time) {
+    return {'sendingBlockAddress':sendingBlockAddress, 'receivingBockAddress':receivingBockAddress, 'amount':amount, 'time':time}
+  },
+
   createTransactionHash : function(transactionObject) {
     var theString = "" + transactionObject.senderId + transactionObject.receiverId +
       transactionObject.amount + transactionObject.time
