@@ -34,6 +34,7 @@ if (options.help) {
       return false
   }
 
+
   var inBlockChain = function(data) {
     for(var i = 0; i < blockChain.length; i++) {
       if(blockChain[i].header == data) {
@@ -42,6 +43,7 @@ if (options.help) {
     }
     return false
   }
+
 
   var start = function() {
     // if there is no blockchain, create a new one
@@ -52,6 +54,7 @@ if (options.help) {
         'value': 1,
         'startTime': Date(),
         'nonce': 0,
+        'coinValue' : 100,
         'merkleRoot': 'defaultmerklenotinyet'
       }
       console.log('block is', block)
@@ -67,10 +70,11 @@ if (options.help) {
     pools.push(pool)
 
     var remoteAPI = '/api/subscribe'
-    var uri = remoteIp + ":" + remotePort + remoteAPI,
+    var uri = remoteIp + ":" + remotePort + remoteAPI
     var body = {'name': name, 'port': localPort}
     sendPostRequest(uri, body)
   }
+
 
   var sendPostRequest = function(uri, body) {
     request({
@@ -99,30 +103,39 @@ if (options.help) {
     next()
   })
 
+
+
+
   router.get('/work', function(req, res) {
     res.json(blockChain[blockChain.length - 1])
   })
 
+
+
+
   router.post('/solution', function(req, res) {
   var block = req.body.blockWorked
   var solution = req.body.solution
+  var canBeSpent = req.body.canBeSpent
   var nonce = req.body.nonce
   var verifiedSolution = verifier.verify(blockWorked, solution, nonce)
   var alreadyPartOfBlockChain = inBlockChain(solution)
   if(!alreadyPartOfBlockChain) {
     var remoteAPI = '/api/solution'
     for(var i = 0; i < pools.length; i++) {
-      var uri = pools[i].address + ":" + pools[i].port + remoteAPI,
+      var uri = pools[i].address + ":" + pools[i].port + remoteAPI
       var body = {'blockWorked': block, 'solution': solution, 'nonce': nonce}
       sendPostRequest(uri, body)
     }
-    blockChain.push({'header': solution, 'canBeSpent': true, 'value': block.value})
+    blockChain[block.sender].canBeSpent = false
+    blockChain.push(block)
     if(block.secondTransaction) {
       var solution = verifier.findSolution(block.secondTransaction)
+      blockChain.push(block.secondTransaction)
       var remoteAPI = '/api/solution'
       for(var i = 0; i < pools.length; i++) {
         var uri = pools[i].address + ":" + pools[i].port + remoteAPI
-        var body = {'blockWorked': block, 'solution': solution, 'nonce': nonce}
+        var body = block.secondTransaction
         sendPostRequest(uri, body)
       }
     }
@@ -130,6 +143,9 @@ if (options.help) {
   res.status(200)
   res.send('OK')
 })
+
+
+
 
   router.post('/subscribe', function(req, res) {
     if(req.body.name && req.body.port)
@@ -151,6 +167,9 @@ if (options.help) {
     }
   })
 
+
+
+
   router.post('/unsubscribe', function(req, res) {
     var name = req.body.name
     var pool
@@ -170,12 +189,13 @@ if (options.help) {
     }
   })
 
+
+
+
   router.post('/transaction', function(req, res) {
   var transaction = req.body.transaction
 
   var lastBlock = blockChain[blockChain.length - 1]
-  var newBlock = { 'header': lastBlock.value, 'value': lastBlock.value + 1, 'time': transaction.time,
-    'nonce': 0, 'merkleRoot': 'someRoot', 'transaction': transaction}
 
   var transAmount = transaction.amount
   var sendingBlockAddress = transaction.sendingBlockAddress
@@ -190,13 +210,12 @@ if (options.help) {
   var leftOverAmount = amountCanBeSpent - transAmount
     // create the new blocks to be worked.
   if(leftOverAmount >= 0) {
-    var transBlock = blockFactory.createBlock(lastBlock, transAmount)
+    var transBlock = blockFactory.createNextBlock(lastBlock, transAmount)
     if(leftOverAmount != 0) {
-      var leftOverBlock = blockFactory.createBlock(transBlock, leftOverAmount)  // send two blocks to be worked!
+      var leftOverBlock = blockFactory.createNextBlock(transBlock, leftOverAmount)  // send two blocks to be worked!
       transBlock.secondTransaction = transaction.createTransactionObject(blockToChange.amount, lastBlock.amount + 1, leftOverAmount, Date())
     }
   }
-
     // solve blocks and set the old block so it can't be spent again.
   var solution = verifier.findSolution(transBlock)
   if(solution == transBlock.value) {
