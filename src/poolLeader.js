@@ -101,7 +101,30 @@ if (options.help) {
   })
 
   router.get('/work', function(req, res) {
-    res.json(blockChain[blockChain.length - 1])
+  	var block = req.body.block
+  	if(block) {
+  		var toReturn = -1
+	  	for(var i = 0; i < blockChain.length; i++) {
+	  		if(blockChain[i].header == block) {
+	        	if(i < blockChain.length - 1) {
+	        		toReturn = i + 1;
+	        	} else {
+	        		toReturn = i;
+	        	}
+	      	}
+	  	}
+	    
+	    if(toReturn == -1) {
+	    	res.status = 404
+	    	res.send('Block not in my chain')
+	    } else {
+			res.send(blockChain[toReturn])
+	    }
+	    
+  	} else {
+		res.send(blockChain[0])
+  	}
+  	
   })
 
   router.post('/solution', function(req, res) {
