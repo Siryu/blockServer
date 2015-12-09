@@ -200,6 +200,7 @@ if (options.help) {
     // solve blocks and set the old block so it can't be spent again.
   var solution = verifier.findSolution(transBlock)
   if(solution == transBlock.value) {
+    blockChain.push(transBlock)
     blockToChange.canBeSpent = false
     var remoteAPI = '/api/solution'
     res.status(200)
@@ -211,8 +212,9 @@ if (options.help) {
     }
     // second transaction for your left over amount
     if(transBlock.secondTransaction) {
-      var solution = verifier.findSolution(transBlock)
+      var solution = verifier.findSolution(transBlock.secondTransaction)
       if(solution == transBlock.secondTransaction.value) {
+        blockChain.push(transBlock.secondTransaction)
         var remoteAPI = '/api/solution'
         for(var i = 0; i < pools.length; i++) {
           var uri = uripools[i].address + ":" + pools[i].port + remoteAPI
