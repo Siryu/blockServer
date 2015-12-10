@@ -216,7 +216,7 @@ router.post('/solution', function(req, res) {
   var canBeSpent = req.body.canBeSpent
   var nonce = req.body.nonce
   var verifiedSolution = verifier.verify(block, solution, nonce)
-  var alreadyPartOfBlockChain = inBlockChain(solution)
+  var alreadyPartOfBlockChain = inBlockChain(block.header)
   if(!alreadyPartOfBlockChain) {
     var remoteAPI = '/api/solution'
     for(var i = 0; i < pools.length; i++) {
