@@ -35,7 +35,7 @@ if (options.help) {
     return false
   }
 
-
+//// right here yo!!!!! infinite loops .. probably sending wrong data.
   var inBlockChain = function(data) {
     for(var i = 0; i < blockChain.length; i++) {
       if(blockChain[i].header == data) {
@@ -54,11 +54,14 @@ if (options.help) {
       body: body
     },
     function(error, res, body) {
-      console.log('got a response......', res.statusCode)
+      if(error) {
+        console.log(error)
+      }
+      else if(res) {
+        console.log('got a response......', res.statusCode)
+      }
     })
   }
-
-  // need sending block address to be able to tell it that it doesn't have any coins left in it.!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
   var updateConsensus = function() {
@@ -206,11 +209,13 @@ else if(toReturn == 0) {
 
 
 router.post('/solution', function(req, res) {
+  console.log('solution:::::::::: ' + req.body.blockWorked)
   var block = req.body.blockWorked
+        console.log('solution sending message ::' + block)
   var solution = req.body.solution
   var canBeSpent = req.body.canBeSpent
   var nonce = req.body.nonce
-  var verifiedSolution = verifier.verify(blockWorked, solution, nonce)
+  var verifiedSolution = verifier.verify(block, solution, nonce)
   var alreadyPartOfBlockChain = inBlockChain(solution)
   if(!alreadyPartOfBlockChain) {
     var remoteAPI = '/api/solution'
@@ -221,16 +226,16 @@ router.post('/solution', function(req, res) {
     }
     blockChain[block.sender].canBeSpent = false
     blockChain.push(block)
-    if(block.secondTransaction) {
-      var solution = verifier.findSolution(block.secondTransaction)
-      blockChain.push(block.secondTransaction)
-      var remoteAPI = '/api/solution'
-      for(var i = 0; i < pools.length; i++) {
-        var uri = pools[i].address + ":" + pools[i].port + remoteAPI
-        var body = block.secondTransaction
-        sendRequest(uri, body, 'POST')
-      }
-    }
+    // if(block.secondTransaction) {
+    //   var solution = verifier.findSolution(block.secondTransaction)
+    //   blockChain.push(block.secondTransaction)
+    //   var remoteAPI = '/api/solution'
+    //   for(var i = 0; i < pools.length; i++) {
+    //     var uri = pools[i].address + ":" + pools[i].port + remoteAPI
+    //     var body = block.secondTransaction
+    //     sendRequest(uri, body, 'POST')
+    //   }
+    // }
   }
   res.status(200)
   res.send('OK')
@@ -245,6 +250,7 @@ router.post('/subscribe', function(req, res) {
     var remoteName = req.body.name;
     var remotePort = req.body.port;
     var remoteAddress = req.connection.remoteAddress
+    var remoteAddress = remoteAddress.replace('::ffff:', 'http://')
     var pool = {'name': remoteName, 'address': remoteAddress, 'port': remotePort};
     if ( !pools.contains(pool) ) {
       pools.push(pool);
@@ -322,9 +328,13 @@ router.post('/transaction', function(req, res) {
       if(leftOverBlock) {
         res.send('block with your change --' + leftOverBlock.header)
       }
+      else {
+        res.send('no change for YOU!')
+      }
       for(var i = 0; i < pools.length; i++) {
         var uri = pools[i].address + ":" + pools[i].port + remoteAPI
         var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
+        console.log('blockworked ::::: ' + transBlock)
         sendRequest(uri, body, 'POST')
       }
     // second transaction for your left over amount
@@ -336,6 +346,7 @@ router.post('/transaction', function(req, res) {
         for(var i = 0; i < pools.length; i++) {
           var uri = pools[i].address + ":" + pools[i].port + remoteAPI
           var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
+          console.log('blockworked for second transaction ::: ' + transBlock.secondTransaction)
           sendRequest(uri, body, 'POST')
         }
       }

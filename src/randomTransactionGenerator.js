@@ -48,13 +48,15 @@ var sendRequest = function(uri, body, typeOfRequest) {
 }
 
 var makeTransaction = function() {
-    var newTransaction = {'sendingBlockAddress':blocksOwned[randomOwnedBlock()],
+  var blockToSpend = blocksOwned[randomOwnedBlock()]
+    var newTransaction = {'sendingBlockAddress':blockToSpend,
       'receivingIPAddress':sendingIPForWallet + ':' + sendingPortForWallet,
       'amount':randomCoinAmount(), 'time':new Date()}
 
     var ip = ipAddresses[tempIpPositionHolder]
 
     sendRequest(ip + '/api/transaction', newTransaction, 'POST')
+    blocksOwned.pop(blockToSpend)
    }
 
 setInterval(makeTransaction, 3000)
