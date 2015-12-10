@@ -3,9 +3,11 @@
 * spam mail.
 */
 var makeTransaction = require('./transaction').createTransactionObject;
+var http = require('http');
+http.post = require('http-post');
 // makeTransaction(sendingBlockAddress, receivingBockAddress, amount, time);
 var commandLineArgs = require('command-line-args');
-var coinCap = 100, coinMin = 10;
+var coinCap = 100, coinMin = 10, transactionRoute = "/api/transaction";
 
 var ipAddresses = commandLineArgs([
   { name: 'addresses', type: String, multiple: true, defaultOption: true }
@@ -20,13 +22,15 @@ var randomCoinAmount = function() {
 	return randomIntInRange(coinMin, coinCap);
 }
 
-while (true) {
+var increment = 0;
 
+setInterval(function() {
 	try {
 		// send the transaction to anyone that will be listening
-		var newTransaction = makeTransaction("someSenderAddress", 
-				"someReceiverAddress",
+		var newTransaction = makeTransaction(increment++, 
+				"127.0.0.1",
 				randomCoinAmount(), new Date());
+		console.log("Made the transaction object to send");
 		// go through all the registered addresses
 		for (var i = ipAddresses.length - 1; i >= 0; i--) {
 			var currentIP = ipAddresses[i];
@@ -34,10 +38,14 @@ while (true) {
 			http POST - address = currentIP/api/transaction
 			body = newTransaction
 			*/
+			http.post(currentIP + transactionRoute, newTransaction, function(res){
+				response.setEncoding('utf8');
+				res.on('data', function(chunk) {
+					console.log(chunk);
+				});
+			});
 		};
 	} catch (error) {
 		console.error(error);
-		break;
 	}
-
-}
+}, 3000);
