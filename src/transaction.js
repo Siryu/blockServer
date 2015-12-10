@@ -11,7 +11,7 @@ String.prototype.hashCode = function(){
 
 var transaction = {
   createTransactionObject : function(sendingBlockAddress, receivingBockAddress, amount, time) {
-    return {'sendingBlockAddress':sendingBlockAddress, 'receivingBockAddress':receivingBockAddress, 'amount':amount, 'time':time}
+    return {'sendingBlockAddress':sendingBlockAddress, 'receivingBockAddress':receivingBlockAddress /* this needs to be the receivers wallet IP*/, 'amount':amount, 'time':time}
   },
 
   createTransactionHash : function(transactionObject) {

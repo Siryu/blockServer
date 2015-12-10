@@ -18,20 +18,20 @@ var cli = commandLineArgs([
   { name: 'remoteIp', alias: 'i', type: String },
   { name: 'remotePort', alias: 'p', type: String},
   { name: 'help', alias: 'h', type: Boolean}
-])
+  ])
 var options = cli.parse()
 
 if (options.help) {
   console.log(cli.getUsage())
 } else {
   Array.prototype.contains = function(obj) {
-      var i = this.length
-      while (i--) {
-          if (this[i] === obj) {
-              return true
-          }
+    var i = this.length
+    while (i--) {
+      if (this[i] === obj) {
+        return true
       }
-      return false
+    }
+    return false
   }
 
 
@@ -82,9 +82,9 @@ if (options.help) {
       method: 'POST',
       json: true,
       body: body
-      },
-      function(error, res, body) {
-        console.log('got a response......', res.statusCode)
+    },
+    function(error, res, body) {
+      console.log('got a response......', res.statusCode)
     })
   }
 
@@ -114,48 +114,45 @@ if (options.help) {
   //  console.log('got a response for registering......', res.statusCode)
   //})
 }
-  var router = express.Router()
 
-  router.use(function(req, res, next) {
-    console.log('we recieved a request ...')
-    next()
-  })
+var router = express.Router()
 
-
-
-
-  router.get('/work', function(req, res) {
-  	var block = req.param('block')  // just the header number
-  	if(block) {
-  		var toReturn = -1
-	  	for(var i = 0; i < blockChain.length; i++) {
-	  		if(blockChain[i].header == block) {
-	        	if(i + 1 < blockChain.length - 1) {
-	        		toReturn = i + 1;
-	        	} else {
-	        		toReturn = i;
-	        	}
-	      	}
-	  	}
-
-	    if(toReturn == -1) {
-	    	res.status = 404
-	    	res.send('Block not in my chain')
-	    }
-      else {
-        res.status = 200
-			  res.send(blockChain[toReturn])
-	    }
-  	}
-    else {
-		  res.send(blockChain[0])
-  	}
-  })
+router.use(function(req, res, next) {
+  console.log('we recieved a request ...')
+  next()
+})
 
 
 
+router.get('/work', function(req, res) {
+ var block = req.body.block
+ if(block) {
+  var toReturn = -1
+  for(var i = 0; i < blockChain.length; i++) {
+   if(blockChain[i].header == block) {
+    if(i < blockChain.length - 1) {
+     toReturn = i + 1;
+   } else {
+     toReturn = i;
+   }
+ }
+}
 
-  router.post('/solution', function(req, res) {
+if(toReturn == -1) {
+  res.status = 404
+  res.send('Block not in my chain')
+} else {
+  res.send(blockChain[toReturn])
+}
+
+} else {
+  res.send(blockChain[0])
+}
+
+})
+
+
+router.post('/solution', function(req, res) {
   var block = req.body.blockWorked
   var solution = req.body.solution
   var canBeSpent = req.body.canBeSpent
@@ -189,52 +186,52 @@ if (options.help) {
 
 
 
-  router.post('/subscribe', function(req, res) {
-    if(req.body.name && req.body.port)
-    {
-      var remoteName = req.body.name;
-      var remotePort = req.body.port;
-      var remoteAddress = req.connection.remoteAddress
-      var pool = {'name': remoteName, 'address': remoteAddress, 'port': remotePort};
-      if ( !pools.contains(pool) ) {
-          pools.push(pool);
-      }
-      res.status(200)
-      res.send('OK')
+router.post('/subscribe', function(req, res) {
+  if(req.body.name && req.body.port)
+  {
+    var remoteName = req.body.name;
+    var remotePort = req.body.port;
+    var remoteAddress = req.connection.remoteAddress
+    var pool = {'name': remoteName, 'address': remoteAddress, 'port': remotePort};
+    if ( !pools.contains(pool) ) {
+      pools.push(pool);
     }
-    else {
-      console.log('couldnt register this pool')
-      res.status(422)
-      res.send('Unprocessable Entity, Not enough information to register.')
+    res.status(200)
+    res.send('OK')
+  }
+  else {
+    console.log('couldnt register this pool')
+    res.status(422)
+    res.send('Unprocessable Entity, Not enough information to register.')
+  }
+})
+
+
+
+
+router.post('/unsubscribe', function(req, res) {
+  var name = req.body.name
+  var pool
+  for(var i = 0; i < pools.length && !pool; i++) {
+    if(pools[i].name == name) {
+      pool = pools[i]
     }
-  })
+  }
+  pools.pop(pool)
+  if(pool) {
+    res.status(200)
+    res.send('OK')
+  }
+  else {
+    res.status(404)
+    res.send('Resource Not Found')
+  }
+})
 
 
 
 
-  router.post('/unsubscribe', function(req, res) {
-    var name = req.body.name
-    var pool
-    for(var i = 0; i < pools.length && !pool; i++) {
-      if(pools[i].name == name) {
-        pool = pools[i]
-      }
-    }
-    pools.pop(pool)
-    if(pool) {
-      res.status(200)
-      res.send('OK')
-    }
-    else {
-      res.status(404)
-      res.send('Resource Not Found')
-    }
-  })
-
-
-
-
-  router.post('/transaction', function(req, res) {
+router.post('/transaction', function(req, res) {
   var transaction = req.body.transaction
 
   var lastBlock = blockChain[blockChain.length - 1]
@@ -251,26 +248,26 @@ if (options.help) {
   }
   var leftOverAmount = amountCanBeSpent - transAmount
     // create the new blocks to be worked.
-  if(leftOverAmount >= 0) {
-    var transBlock = blockFactory.createNextBlock(lastBlock, transAmount)
-    if(leftOverAmount != 0) {
+    if(leftOverAmount >= 0) {
+      var transBlock = blockFactory.createNextBlock(lastBlock, transAmount)
+      if(leftOverAmount != 0) {
       var leftOverBlock = blockFactory.createNextBlock(transBlock, leftOverAmount)  // send two blocks to be worked!
       transBlock.secondTransaction = transaction.createTransactionObject(blockToChange.amount, lastBlock.amount + 1, leftOverAmount, Date())
     }
   }
     // solve blocks and set the old block so it can't be spent again.
-  var solution = verifier.findSolution(transBlock)
-  if(solution == transBlock.value) {
-    blockChain.push(transBlock)
-    blockToChange.canBeSpent = false
-    var remoteAPI = '/api/solution'
-    res.status(200)
-    res.send('block with your change --' + leftOverBlock.header)
-    for(var i = 0; i < pools.length; i++) {
-      var uri = uripools[i].address + ":" + pools[i].port + remoteAPI
-      var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
-      sendPostRequest(uri, body)
-    }
+    var solution = verifier.findSolution(transBlock)
+    if(solution == transBlock.value) {
+      blockChain.push(transBlock)
+      blockToChange.canBeSpent = false
+      var remoteAPI = '/api/solution'
+      res.status(200)
+      res.send('block with your change --' + leftOverBlock.header)
+      for(var i = 0; i < pools.length; i++) {
+        var uri = uripools[i].address + ":" + pools[i].port + remoteAPI
+        var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
+        sendPostRequest(uri, body)
+      }
     // second transaction for your left over amount
     if(transBlock.secondTransaction) {
       var solution = verifier.findSolution(transBlock.secondTransaction)
