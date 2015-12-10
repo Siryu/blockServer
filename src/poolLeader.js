@@ -116,15 +116,15 @@ if (options.help) {
     remotePort = options.remotePort
     localPort = options.localPort
     name = options.name
-    var pool = {'name': '', 'address': remoteIp, 'port': remotePort}
-    pools.push(pool)
+    // var pool = {'name': 'temp', 'address': remoteIp, 'port': remotePort}
+    // pools.push(pool)
 
     var remoteAPI = '/api/subscribe'
     var uri = remoteIp + ":" + remotePort + remoteAPI
     var body = {'name': name, 'port': localPort}
     sendRequest(uri, body, 'POST')
 
-    setInterval(updateConsensus, 5000)
+    //setInterval(updateConsensus, 5000)
   }
 
 
@@ -209,7 +209,7 @@ else if(toReturn == 0) {
 
 
 router.post('/solution', function(req, res) {
-  console.log('solution:::::::::: ' + req.body.blockWorked)
+  console.log('solution::::::::::', req.body.blockWorked)
   var block = req.body.blockWorked
         console.log('solution sending message ::' + block)
   var solution = req.body.solution
@@ -299,14 +299,13 @@ router.post('/transaction', function(req, res) {
   var amountCanBeSpent
   var blockToChange
   for (var i = 0; i < blockChain.length && !blockToChange; i++) {
-    console.log('my header ' + blockChain[0].header)
-    console.log('sendingBlockAddress ' + sendingBlockAddress)
+    console.log('sendingBlockAddress ', sendingBlockAddress)
     if(blockChain[i].header == sendingBlockAddress && blockChain[i].canBeSpent) {
       amountCanBeSpent = blockChain[i].coinValue
       blockToChange = blockChain[i]
     }
   }
-  console.log('amountCanBeSpent: ' + amountCanBeSpent + ' transAmount: ' + transAmount)
+  console.log('amountCanBeSpent:', amountCanBeSpent, 'transAmount:', transAmount)
   var leftOverAmount = amountCanBeSpent - transAmount
     // create the new blocks to be worked.
     var transBlock = blockFactory.createNextBlock(lastBlock, transAmount)
@@ -334,7 +333,7 @@ router.post('/transaction', function(req, res) {
       for(var i = 0; i < pools.length; i++) {
         var uri = pools[i].address + ":" + pools[i].port + remoteAPI
         var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
-        console.log('blockworked ::::: ' + transBlock)
+        console.log('blockworked :::::', transBlock)
         sendRequest(uri, body, 'POST')
       }
     // second transaction for your left over amount
@@ -346,7 +345,7 @@ router.post('/transaction', function(req, res) {
         for(var i = 0; i < pools.length; i++) {
           var uri = pools[i].address + ":" + pools[i].port + remoteAPI
           var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
-          console.log('blockworked for second transaction ::: ' + transBlock.secondTransaction)
+          console.log('blockworked for second transaction :::', transBlock.secondTransaction)
           sendRequest(uri, body, 'POST')
         }
       }
