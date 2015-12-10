@@ -3,11 +3,16 @@
 * spam mail.
 */
 var makeTransaction = require('./transaction').createTransactionObject;
-var http = require('http');
-http.post = require('http-post');
 // makeTransaction(sendingBlockAddress, receivingBockAddress, amount, time);
 var commandLineArgs = require('command-line-args');
-var coinCap = 100, coinMin = 10, transactionRoute = "/api/transaction";
+var coinCap = 100, coinMin = 10;
+
+var request = require('request')
+
+var sendingPortForWallet = 40999
+var sendingIPForWallet = 'http://127.0.0.1'
+var blocksOwned = [0]
+var tempIpPositionHolder = 0
 
 var ipAddresses = commandLineArgs([
   { name: 'addresses', type: String, multiple: true, defaultOption: true }
@@ -22,30 +27,40 @@ var randomCoinAmount = function() {
 	return randomIntInRange(coinMin, coinCap);
 }
 
-var increment = 0;
+var randomOwnedBlock = function() {
+  var random = Math.floor(Math.random() * blocksOwned.length)
+  console.log('the value im returning is ' + random)
+  return random
+}
 
-setInterval(function() {
-	try {
-		// send the transaction to anyone that will be listening
-		var newTransaction = makeTransaction(increment++, 
-				"127.0.0.1",
-				randomCoinAmount(), new Date());
-		console.log("Made the transaction object to send");
+var sendRequest = function(uri, body, typeOfRequest) {
+  request({
+    url: uri,
+    method: typeOfRequest,
+    json: true,
+    body: body
+  },
+  function(error, res, body) {
+    console.log(body)
+  })
+}
+
+var makeTransaction = function() {
+    var newTransaction = {'sendingBlockAddress':blocksOwned[randomOwnedBlock()],
+      'receivingIPAddress':sendingIPForWallet + ':' + sendingPortForWallet,
+      'amount':randomCoinAmount(), 'time':new Date()}
+
+    var ip = ipAddresses[tempIpPositionHolder]
+
+    sendRequest(ip + '/api/transaction', newTransaction, 'POST')
 		// go through all the registered addresses
-		for (var i = ipAddresses.length - 1; i >= 0; i--) {
-			var currentIP = ipAddresses[i];
+		// for (var i = ipAddresses.length - 1; i >= 0; i--) {
+		// 	var currentIP = ipAddresses[i];
 			/*
 			http POST - address = currentIP/api/transaction
 			body = newTransaction
 			*/
-			http.post(currentIP + transactionRoute, newTransaction, function(res){
-				response.setEncoding('utf8');
-				res.on('data', function(chunk) {
-					console.log(chunk);
-				});
-			});
-		};
-	} catch (error) {
-		console.error(error);
-	}
-}, 3000);
+	   //}
+   }
+
+setInterval(makeTransaction, 3000)

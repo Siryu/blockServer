@@ -70,6 +70,7 @@ if (options.help) {
     var query = {blockNumber: params}
 
     request.get({url: uri, qs: query}, function(err, response, body) {
+      console.log(body)
       if(body != 'Unknown Block' && body != 'Up to Date') {
         blockChain.push(body)
         if(body.sender) {
@@ -82,10 +83,11 @@ if (options.help) {
       }
     })
 
-    tempCounterForConsesus++
+    console.log(pools)
     if(tempCounterForConsesus >= pools.length) {
       tempCounterForConsesus = 0
     }
+    console.log('counter for blocks' + tempCounterForConsesus)
    }
 
 
@@ -99,6 +101,7 @@ if (options.help) {
         'startTime': Date(),
         'nonce': 0,
         'coinValue' : 100,
+        'canBeSpent' : true,
         'merkleRoot': 'defaultmerklenotinyet'
       }
       console.log('block is', block)
@@ -282,42 +285,45 @@ router.post('/unsubscribe', function(req, res) {
 
 
 router.post('/transaction', function(req, res) {
-  var transaction = req.body.transaction
+  var transaction = req.body
 
   var lastBlock = blockChain[blockChain.length - 1]
-
   var transAmount = transaction.amount
   var sendingBlockAddress = transaction.sendingBlockAddress
   var amountCanBeSpent
   var blockToChange
   for (var i = 0; i < blockChain.length && !blockToChange; i++) {
+    console.log('my header ' + blockChain[0].header)
+    console.log('sendingBlockAddress ' + sendingBlockAddress)
     if(blockChain[i].header == sendingBlockAddress && blockChain[i].canBeSpent) {
       amountCanBeSpent = blockChain[i].coinValue
       blockToChange = blockChain[i]
     }
   }
+  console.log('amountCanBeSpent: ' + amountCanBeSpent + ' transAmount: ' + transAmount)
   var leftOverAmount = amountCanBeSpent - transAmount
     // create the new blocks to be worked.
+    console.log(leftOverAmount + 'leftOverAmount')
     if(leftOverAmount >= 0) {
       var transBlock = blockFactory.createNextBlock(lastBlock, transAmount)
       if(leftOverAmount != 0) {
       var leftOverBlock = blockFactory.createNextBlock(transBlock, leftOverAmount)  // send two blocks to be worked!
-      transBlock.secondTransaction = transaction.createTransactionObject(blockToChange.amount, lastBlock.amount + 1, leftOverAmount, Date())
+      transBlock.secondTransaction = leftOverBlock
     }
   }
     // solve blocks and set the old block so it can't be spent again.
     var solution = verifier.findSolution(transBlock)
     if(solution == transBlock.value) {
-      transBlock.sender(blockToChange.header)
+      transBlock.sender = blockToChange.header
       blockChain.push(transBlock)
       blockToChange.canBeSpent = false
       var remoteAPI = '/api/solution'
       res.status(200)
       res.send('block with your change --' + leftOverBlock.header)
       for(var i = 0; i < pools.length; i++) {
-        var uri = uripools[i].address + ":" + pools[i].port + remoteAPI
+        var uri = pools[i].address + ":" + pools[i].port + remoteAPI
         var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
-        sendRequest(uri, body, 'POST')
+      //  sendRequest(uri, body, 'POST')
       }
     // second transaction for your left over amount
     if(transBlock.secondTransaction) {
@@ -326,9 +332,9 @@ router.post('/transaction', function(req, res) {
         blockChain.push(transBlock.secondTransaction)
         var remoteAPI = '/api/solution'
         for(var i = 0; i < pools.length; i++) {
-          var uri = uripools[i].address + ":" + pools[i].port + remoteAPI
+          var uri = pools[i].address + ":" + pools[i].port + remoteAPI
           var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
-          sendRequest(uri, body, 'POST')
+        //  sendRequest(uri, body, 'POST')
         }
       }
     }
