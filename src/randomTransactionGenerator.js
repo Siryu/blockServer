@@ -41,7 +41,9 @@ var sendRequest = function(uri, body, typeOfRequest) {
     body: body
   },
   function(error, res, body) {
-    console.log(body)
+    if(body.indexOf('--') > -1) {
+      blocksOwned.push(body.split('--')[1])
+    }
   })
 }
 
@@ -53,14 +55,6 @@ var makeTransaction = function() {
     var ip = ipAddresses[tempIpPositionHolder]
 
     sendRequest(ip + '/api/transaction', newTransaction, 'POST')
-		// go through all the registered addresses
-		// for (var i = ipAddresses.length - 1; i >= 0; i--) {
-		// 	var currentIP = ipAddresses[i];
-			/*
-			http POST - address = currentIP/api/transaction
-			body = newTransaction
-			*/
-	   //}
    }
 
 setInterval(makeTransaction, 3000)
