@@ -65,7 +65,7 @@ if (options.help) {
 
 
   var updateConsensus = function() {
-
+    if(pools.length > 0) {
     var typeOfRequest = 'GET'
     var path = '/api/work'
     var uri = pools[tempCounterForConsesus].address + ':' + pools[tempCounterForConsesus].port + path
@@ -89,9 +89,11 @@ if (options.help) {
     console.log(pools)
     if(tempCounterForConsesus >= pools.length) {
       tempCounterForConsesus = 0
+
     }
     console.log('counter for blocks' + tempCounterForConsesus)
-   }
+    }
+  }
 
 
   var start = function() {
@@ -114,12 +116,12 @@ if (options.help) {
     //=========================================================
 
     localPort = options.localPort
-    // var pool = {'name': 'temp', 'address': remoteIp, 'port': remotePort}
-    // pools.push(pool)
-    if(options.remoteIP) {
+
+    if(options.remoteIp) {
       var remoteAPI = '/api/subscribe'
       var uri = options.remoteIp + ":" + options.remotePort + remoteAPI
       var body = {'name': options.name, 'port': localPort}
+      console.log('subrscribing........................')
       sendRequest(uri, body, 'POST')
     }
     //setInterval(updateConsensus, 5000)
@@ -138,8 +140,8 @@ if (options.help) {
   remotePort = options.remotePort
   localPort = options.localPort
   name = options.name
-  var pool = {'name':'', 'address':remoteIp, 'port': remotePort};
-  pools.push(pool)
+  // var pool = {'name':'', 'address':remoteIp, 'port': remotePort};
+  // pools.push(pool)
 
   //var remoteAPI = '/api/subscribe'
   //request({
@@ -297,7 +299,6 @@ router.post('/transaction', function(req, res) {
   var amountCanBeSpent
   var blockToChange
   for (var i = 0; i < blockChain.length && !blockToChange; i++) {
-    console.log('sendingBlockAddress ', sendingBlockAddress)
     if(blockChain[i].header == sendingBlockAddress && blockChain[i].canBeSpent) {
       amountCanBeSpent = blockChain[i].coinValue
       blockToChange = blockChain[i]
@@ -329,6 +330,7 @@ router.post('/transaction', function(req, res) {
         res.send('no change for YOU!')
       }
       for(var i = 0; i < pools.length; i++) {
+        console.log('items in pool', pools)
         var uri = pools[i].address + ":" + pools[i].port + remoteAPI
         var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
         console.log('blockworked :::::', transBlock)
