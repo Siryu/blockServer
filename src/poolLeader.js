@@ -65,6 +65,8 @@ if (options.help) {
 
 
   var updateConsensus = function() {
+
+        console.log(pools)
     if(pools.length > 0) {
     var typeOfRequest = 'GET'
     var path = '/api/work'
@@ -75,18 +77,24 @@ if (options.help) {
     request.get({url: uri, qs: query}, function(err, response, body) {
       console.log(body)
       if(body != 'Unknown Block' && body != 'Up to Date') {
-        blockChain.push(body)
-        if(body.sender) {
-          for(var i = 0; i < blockChain.length; i++) {
-            if(blockChain[i].header == body.sender) {
-              blockChain[i].canBeSpent = false
+        var alreadyIn = false
+        for(var i = 0; i < blockChain.length; i++) {
+          if(blockChain[i].header == body.header)
+          alreadyIn = true
+        }
+        if(!alreadyIn) {
+          if(body.sender) {
+            for(var i = 0; i < blockChain.length; i++) {
+              if(blockChain[i].header = body.sender) {
+                blockChain[i].canBeSpent = false
+              }
             }
           }
+        blockChain.push(body)
         }
       }
     })
 
-    console.log(pools)
     if(tempCounterForConsesus >= pools.length) {
       tempCounterForConsesus = 0
 
@@ -209,9 +217,7 @@ else if(toReturn == 0) {
 
 
 router.post('/solution', function(req, res) {
-  console.log('solution::::::::::', req.body.blockWorked)
   var block = req.body.blockWorked
-        console.log('solution sending message ::' + block)
   var solution = req.body.solution
   var canBeSpent = req.body.canBeSpent
   var nonce = req.body.nonce
@@ -304,56 +310,62 @@ router.post('/transaction', function(req, res) {
       blockToChange = blockChain[i]
     }
   }
-  console.log('amountCanBeSpent:', amountCanBeSpent, 'transAmount:', transAmount)
-  var leftOverAmount = amountCanBeSpent - transAmount
-    // create the new blocks to be worked.
-    var transBlock = blockFactory.createNextBlock(lastBlock, transAmount)
-    if(leftOverAmount >= 0) {
-      if(leftOverAmount != 0) {
-        var leftOverBlock = blockFactory.createNextBlock(transBlock, leftOverAmount)  // send two blocks to be worked!
-        transBlock.secondTransaction = leftOverBlock
+  if(blockToChange) {
+    console.log('amountCanBeSpent:', amountCanBeSpent, 'transAmount:', transAmount)
+    var leftOverAmount = amountCanBeSpent - transAmount
+      // create the new blocks to be worked.
+      var transBlock = blockFactory.createNextBlock(lastBlock, transAmount)
+      if(leftOverAmount >= 0) {
+        if(leftOverAmount != 0) {
+          var leftOverBlock = blockFactory.createNextBlock(transBlock, leftOverAmount)  // send two blocks to be worked!
+          transBlock.secondTransaction = leftOverBlock
+        }
       }
-    }
 
-    // solve blocks and set the old block so it can't be spent again.
-    var solution = verifier.findSolution(transBlock)
-    if(solution == transBlock.value) {
-      transBlock.sender = blockToChange.header
-      blockChain.push(transBlock)
-      blockToChange.canBeSpent = false
-      var remoteAPI = '/api/solution'
-      res.status(200)
-      if(leftOverBlock) {
-        res.send('block with your change --' + leftOverBlock.header + '--' + leftOverBlock.coinValue)
-      }
-      else {
-        res.send('no change for YOU!')
-      }
-      for(var i = 0; i < pools.length; i++) {
-        console.log('items in pool', pools)
-        var uri = pools[i].address + ":" + pools[i].port + remoteAPI
-        var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
-        console.log('blockworked :::::', transBlock)
-        sendRequest(uri, body, 'POST')
-      }
-    // second transaction for your left over amount
-    if(transBlock.secondTransaction) {
-      var solution = verifier.findSolution(transBlock.secondTransaction)
-      if(solution == transBlock.secondTransaction.value) {
-        blockChain.push(transBlock.secondTransaction)
+      // solve blocks and set the old block so it can't be spent again.
+      var solution = verifier.findSolution(transBlock)
+      if(solution == transBlock.value) {
+        transBlock.sender = blockToChange.header
+        blockChain.push(transBlock)
+        blockToChange.canBeSpent = false
         var remoteAPI = '/api/solution'
+        res.status(200)
+        if(leftOverBlock) {
+          res.send('block with your change --' + leftOverBlock.header + '--' + leftOverBlock.coinValue)
+        }
+        else {
+          res.send('no change for YOU!')
+        }
         for(var i = 0; i < pools.length; i++) {
+          console.log('items in pool', pools)
           var uri = pools[i].address + ":" + pools[i].port + remoteAPI
-          var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
-          console.log('blockworked for second transaction :::', transBlock.secondTransaction)
+          var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
+          console.log('blockworked :::::', transBlock)
           sendRequest(uri, body, 'POST')
+        }
+      // second transaction for your left over amount
+      if(transBlock.secondTransaction) {
+        var solution = verifier.findSolution(transBlock.secondTransaction)
+        if(solution == transBlock.secondTransaction.value) {
+          blockChain.push(transBlock.secondTransaction)
+          var remoteAPI = '/api/solution'
+          for(var i = 0; i < pools.length; i++) {
+            var uri = pools[i].address + ":" + pools[i].port + remoteAPI
+            var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
+            console.log('blockworked for second transaction :::', transBlock.secondTransaction)
+            sendRequest(uri, body, 'POST')
+          }
         }
       }
     }
+    else {
+      res.status(400)
+      res.send('transaction not accepted')
+    }
   }
   else {
-    res.status(400)
-    res.send('transaction not accepted')
+    res.status(401)
+    res.send('access to transaction denied due to already being spent')
   }
 })
   // register all routes here
