@@ -6,6 +6,7 @@ var makeTransaction = require('./transaction').createTransactionObject;
 // makeTransaction(sendingBlockAddress, receivingBockAddress, amount, time);
 var commandLineArgs = require('command-line-args');
 var express = require('express')
+var bodyParser = require('body-parser')
 var app = express()
 var coinCap = 100, coinMin = 10;
 
@@ -23,10 +24,25 @@ var ipAddresses = commandLineArgs([
 //=========================================================================
 //express stuff to listen for my wallet
 var router = express.Router()
-router.get('/', function(req, res) {
-  console.log('corey corey corey', req)
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.json())
+router.use(function(req, res, next) {
+  console.log('we recieved a request ...')
+  next()
 })
-
+router.post('/', function(req, res) {
+  if(req.body.blockNumber && req.body.amount) {
+    console.log('received a payment of ' + req.body.amount)
+    blocksOwned.push(req.body)
+    res.status(200)
+    res.send('OK')
+  }
+  else {
+    res.status(400)
+    res.send('transaction not accepted')
+  }
+})
+app.use('/api', router)
 app.listen(sendingPortForWallet)
 
 
@@ -69,14 +85,19 @@ var makeTransaction = function() {
     var blockToSpend = blocksOwned[randomOwnedBlock()]
     console.log("Block to spend", blockToSpend)
       var newTransaction = {'sendingBlockAddress':blockToSpend.blockNumber,
-        'receivingIPAddress':sendingIPForWallet + ':' + sendingPortForWallet,
+        'receivingIPAddress':sendingIPForWallet + ':' + sendingPortForWallet + '/api',
         'amount':10/*randomCoinAmount()*/, 'time':new Date()}
 
       console.log("blocks owned:", blocksOwned)
       var ip = ipAddresses[tempIpPositionHolder]
 
       sendRequest(ip + '/api/transaction', newTransaction, 'POST')
-      blocksOwned.pop(blockToSpend)
+
+      for(var i = blocksOwned.length - 1; i >= 0; i--) {
+        if(blocksOwned[i].blockNumber == blockToSpend.blockNumber) {
+          blocksOwned.splice(i, 1);
+        }
+      }
 
       tempIpPositionHolder++
       if(tempIpPositionHolder >= ipAddresses.length) {
