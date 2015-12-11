@@ -130,6 +130,10 @@ if (options.help) {
       var remoteAPI = '/api/subscribe'
       var uri = options.remoteIp + ":" + options.remotePort + remoteAPI
       var body = {'name': options.name, 'port': localPort}
+      var pool = {'name': 'defaultAdd', 'address': options.remoteIp, 'port': options.remotePort }
+      if ( !pools.contains(pool) ) {
+        pools.push(pool);
+      }
       console.log('subrscribing........................')
       sendRequest(uri, body, 'POST')
     }
@@ -335,7 +339,7 @@ router.post('/transaction', function(req, res) {
         var remoteAPI = '/api/solution'
         res.status(200)
         if(leftOverBlock) {
-          res.send('block with your change --' + leftOverBlock.header + '--' + leftOverBlock.coinValue)
+          res.send({blockNumber: leftOverBlock.header, amount: leftOverBlock.coinValue})
         }
         else {
           res.send('no change for YOU!')

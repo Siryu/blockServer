@@ -73,8 +73,8 @@ var sendRequest = function(uri, body, typeOfRequest) {
     }
     else {
       console.log(body)
-      if(body.indexOf('--') > -1) {
-        blocksOwned.push({ blockNumber: body.split('--')[1] | 0, amount: body.split('--')[2]})
+      if(body.amount && body.blockNumber) {
+        blocksOwned.push(body)
       }
     }
   })
