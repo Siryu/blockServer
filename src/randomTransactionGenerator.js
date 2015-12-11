@@ -13,7 +13,7 @@ var request = require('request')
 
 var sendingPortForWallet = 40999
 var sendingIPForWallet = 'http://127.0.0.1'
-var blocksOwned = [0]
+var blocksOwned = [{blockNumber:0, amount:100}]
 var tempIpPositionHolder = 0
 
 var ipAddresses = commandLineArgs([
@@ -24,7 +24,7 @@ var ipAddresses = commandLineArgs([
 //express stuff to listen for my wallet
 var router = express.Router()
 router.get('/', function(req, res) {
-  console.log(req)
+  console.log('corey corey corey', req)
 })
 
 app.listen(sendingPortForWallet)
@@ -58,24 +58,34 @@ var sendRequest = function(uri, body, typeOfRequest) {
     else {
       console.log(body)
       if(body.indexOf('--') > -1) {
-        blocksOwned.push(body.split('--')[1] | 0)
+        blocksOwned.push({ blockNumber: body.split('--')[1] | 0, amount: body.split('--')[2]})
       }
     }
   })
 }
 
 var makeTransaction = function() {
-  var blockToSpend = blocksOwned[randomOwnedBlock()]
-  console.log("Block to spend", blockToSpend)
-    var newTransaction = {'sendingBlockAddress':blockToSpend,
-      'receivingIPAddress':sendingIPForWallet + ':' + sendingPortForWallet,
-      'amount':10/*randomCoinAmount()*/, 'time':new Date()}
+  if(blocksOwned.length > 0) {
+    var blockToSpend = blocksOwned[randomOwnedBlock()]
+    console.log("Block to spend", blockToSpend)
+      var newTransaction = {'sendingBlockAddress':blockToSpend.blockNumber,
+        'receivingIPAddress':sendingIPForWallet + ':' + sendingPortForWallet,
+        'amount':10/*randomCoinAmount()*/, 'time':new Date()}
 
-    console.log("blocks owned:", blocksOwned)
-    var ip = ipAddresses[tempIpPositionHolder]
+      console.log("blocks owned:", blocksOwned)
+      var ip = ipAddresses[tempIpPositionHolder]
 
-    sendRequest(ip + '/api/transaction', newTransaction, 'POST')
-    blocksOwned.pop(blockToSpend)
+      sendRequest(ip + '/api/transaction', newTransaction, 'POST')
+      blocksOwned.pop(blockToSpend)
+
+      tempIpPositionHolder++
+      if(tempIpPositionHolder >= ipAddresses.length) {
+        tempIpPositionHolder = 0
+      }
+    }
+    else {
+      console.log('You don\'t own any coins')
+    }
    }
 
-setInterval(makeTransaction, 10000)
+setInterval(makeTransaction, 3000)
