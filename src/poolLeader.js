@@ -12,6 +12,7 @@ var blockDuration = 10
 var tempCounterForConsesus = 0
 var blockChain = []
 var remoteIp, remotePort, name
+var consensus = 'started'
 
 var cli = commandLineArgs([
   { name: 'name', alias: 'n', type: String},
@@ -46,7 +47,7 @@ if (options.help) {
   }
 
 
-  var sendRequest = function(uri, body, typeOfRequest) {
+  var sendRequest = function(uri, body, typeOfRequest, callback) {
     request({
       url: uri,
       method: typeOfRequest,
@@ -59,7 +60,9 @@ if (options.help) {
       }
       else if(res) {
         console.log('got a response......', res.statusCode)
-        return true
+        if(callback) {
+          callback(res)
+        }
       }
     })
   }
@@ -67,16 +70,19 @@ if (options.help) {
 
   var updateConsensus = function() {
 
-        console.log(pools)
+    console.log(pools)
     if(pools.length > 0) {
     var typeOfRequest = 'GET'
     var path = '/api/work'
     var uri = pools[tempCounterForConsesus].address + ':' + pools[tempCounterForConsesus].port + path
+
     var params = blockChain[blockChain.length - 1].header
+
     var query = {blockNumber: params}
 
     request.get({url: uri, qs: query}, function(err, response, body) {
       console.log(body)
+
       if(body != 'Unknown Block' && body != 'Up to Date') {
         var alreadyIn = false
         for(var i = 0; i < blockChain.length; i++) {
@@ -94,8 +100,11 @@ if (options.help) {
         blockChain.push(body)
         }
       }
+      else {
+        // updateConsensus()
+      }
     })
-
+    tempCounterForConsesus++
     if(tempCounterForConsesus >= pools.length) {
       tempCounterForConsesus = 0
 
@@ -109,6 +118,8 @@ if (options.help) {
     // if there is no blockchain, create a new one
     //=========================================================
     if(blockChain.length == 0) {
+
+    //download entire block chain from register or if no register .. this
       var block = {
         'header': 0,
         'value': 1,
@@ -135,7 +146,9 @@ if (options.help) {
         pools.push(pool);
       }
       console.log('subrscribing........................')
-      sendRequest(uri, body, 'POST')
+      sendRequest(uri, body, 'POST', function(res){
+        blockChain = res.body
+      })
     }
     //setInterval(updateConsensus, 5000)
   }
@@ -217,7 +230,6 @@ else if(toReturn == 0) {
   res.send(blockChain[0])
   console.log('... someone asked for a block but didnt provide a prarmater')
 }
-
 })
 
 
@@ -228,6 +240,7 @@ router.post('/solution', function(req, res) {
   var nonce = req.body.nonce
   var verifiedSolution = verifier.verify(block, solution, nonce)
   var alreadyPartOfBlockChain = inBlockChain(block.header)
+
   if(!alreadyPartOfBlockChain) {
     var remoteAPI = '/api/solution'
     for(var i = 0; i < pools.length; i++) {
@@ -235,7 +248,17 @@ router.post('/solution', function(req, res) {
       var body = {'blockWorked': block, 'solution': solution, 'nonce': nonce}
       sendRequest(uri, body, 'POST')
     }
-    blockChain[block.sender].canBeSpent = canBeSpent
+    var blockToChange
+    for(var i = 0; i < blockChain.length; i++){
+      if(block.sender && blockChain[i].header == block.sender) {
+        blockToChange = blockChain[i]
+      }
+    }
+
+    console.log('looking for block.sender', block.sender, blockChain)
+    if(block.spender) {
+      blockToChange.canBeSpent = canBeSpent
+    }
     blockChain.push(block)
     // if(block.secondTransaction) {
     //   var solution = verifier.findSolution(block.secondTransaction)
@@ -267,7 +290,7 @@ router.post('/subscribe', function(req, res) {
       pools.push(pool);
     }
     res.status(200)
-    res.send('OK')
+    res.send(blockChain)
   }
   else {
     console.log('couldnt register this pool')
@@ -310,7 +333,7 @@ router.post('/transaction', function(req, res) {
   var amountCanBeSpent
   var blockToChange
   for (var i = 0; i < blockChain.length && !blockToChange; i++) {
-    if(blockChain[i].header == sendingBlockAddress && blockChain[i].canBeSpent) {
+    if(blockChain[i].header == sendingBlockAddress) {
       amountCanBeSpent = blockChain[i].coinValue
       blockToChange = blockChain[i]
     }
@@ -332,41 +355,41 @@ router.post('/transaction', function(req, res) {
       if(solution == transBlock.value) {
         var worked = false
         transBlock.sender = blockToChange.header
-        blockChain.push(transBlock)
-        sendRequest(transaction.receivingIPAddress, {blockNumber: transBlock.header, amount: transAmount}, 'POST')
-        blockToChange.canBeSpent = false
-        transBlock.canBeSpent = true
-        var remoteAPI = '/api/solution'
-        res.status(200)
-        if(leftOverBlock) {
-          res.send({blockNumber: leftOverBlock.header, amount: leftOverBlock.coinValue})
-        }
-        else {
-          res.send('no change for YOU!')
-        }
-        for(var i = 0; i < pools.length; i++) {
-          var uri = pools[i].address + ":" + pools[i].port + remoteAPI
-          var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
-          console.log('blockworked :::::', transBlock)
-          sendRequest(uri, body, 'POST')
-        }
-      // second transaction for your left over amount
-      if(transBlock.secondTransaction) {
-        var solution = verifier.findSolution(transBlock.secondTransaction)
-        if(solution == transBlock.secondTransaction.value) {
-          transBlock.secondTransaction.canBeSpent = true
-          blockChain.push(transBlock.secondTransaction)
+        sendRequest(transaction.receivingIPAddress, {blockNumber: transBlock.header, amount: transAmount}, 'POST', function() {
+          blockChain.push(transBlock)
+          blockToChange.canBeSpent = false
+          transBlock.canBeSpent = true
           var remoteAPI = '/api/solution'
+          res.status(200)
+          if(transBlock.secondTransaction) {
+            res.send({blockNumber: transBlock.secondTransaction.header, amount: transBlock.secondTransaction.coinValue})
+          }
+          else {
+            res.send('no change for YOU!')
+          }
           for(var i = 0; i < pools.length; i++) {
             var uri = pools[i].address + ":" + pools[i].port + remoteAPI
-            var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
-            console.log('blockworked for second transaction :::', transBlock.secondTransaction)
-            if(worked) {
-              sendRequest(uri, body, 'POST')
+            var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
+            console.log('blockworked :::::', transBlock)
+            sendRequest(uri, body, 'POST', function() {
+              if(transBlock.secondTransaction) {
+                var solution = verifier.findSolution(transBlock.secondTransaction)
+                if(solution == transBlock.secondTransaction.value) {
+                  transBlock.secondTransaction.canBeSpent = true
+                  blockChain.push(transBlock.secondTransaction)
+                  var remoteAPI = '/api/solution'
+                    var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
+                    console.log('blockworked for second transaction :::', transBlock.secondTransaction)
+                    sendRequest(uri, body, 'POST')
+
+
+              }
             }
-          }
+          })
         }
-      }
+      })
+      // second transaction for your left over amount
+
     }
     else {
       res.status(400)
