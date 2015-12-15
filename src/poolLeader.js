@@ -47,7 +47,7 @@ if (options.help) {
   }
 
 
-  var sendRequest = function(uri, body, typeOfRequest, callback) {
+  var sendRequest = function(uri, body, typeOfRequest) {
     request({
       url: uri,
       method: typeOfRequest,
@@ -60,9 +60,6 @@ if (options.help) {
       }
       else if(res) {
         console.log('got a response......', res.statusCode)
-        if(callback) {
-          callback(res)
-        }
       }
     })
   }
@@ -333,7 +330,7 @@ router.post('/transaction', function(req, res) {
   var amountCanBeSpent
   var blockToChange
   for (var i = 0; i < blockChain.length && !blockToChange; i++) {
-    if(blockChain[i].header == sendingBlockAddress) {
+    if(blockChain[i].header == sendingBlockAddress && blockChain[i].canBeSpent) {
       amountCanBeSpent = blockChain[i].coinValue
       blockToChange = blockChain[i]
     }
@@ -355,41 +352,41 @@ router.post('/transaction', function(req, res) {
       if(solution == transBlock.value) {
         var worked = false
         transBlock.sender = blockToChange.header
-        sendRequest(transaction.receivingIPAddress, {blockNumber: transBlock.header, amount: transAmount}, 'POST', function() {
-          blockChain.push(transBlock)
-          blockToChange.canBeSpent = false
-          transBlock.canBeSpent = true
+        blockChain.push(transBlock)
+        sendRequest(transaction.receivingIPAddress, {blockNumber: transBlock.header, amount: transAmount}, 'POST')
+        blockToChange.canBeSpent = false
+        transBlock.canBeSpent = true
+        var remoteAPI = '/api/solution'
+        res.status(200)
+        if(leftOverBlock) {
+          res.send({blockNumber: leftOverBlock.header, amount: leftOverBlock.coinValue})
+        }
+        else {
+          res.send('no change for YOU!')
+        }
+        for(var i = 0; i < pools.length; i++) {
+          var uri = pools[i].address + ":" + pools[i].port + remoteAPI
+          var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
+          console.log('blockworked :::::', transBlock)
+          sendRequest(uri, body, 'POST')
+        }
+      // second transaction for your left over amount
+      if(transBlock.secondTransaction) {
+        var solution = verifier.findSolution(transBlock.secondTransaction)
+        if(solution == transBlock.secondTransaction.value) {
+          transBlock.secondTransaction.canBeSpent = true
+          blockChain.push(transBlock.secondTransaction)
           var remoteAPI = '/api/solution'
-          res.status(200)
-          if(transBlock.secondTransaction) {
-            res.send({blockNumber: transBlock.secondTransaction.header, amount: transBlock.secondTransaction.coinValue})
-          }
-          else {
-            res.send('no change for YOU!')
-          }
           for(var i = 0; i < pools.length; i++) {
             var uri = pools[i].address + ":" + pools[i].port + remoteAPI
-            var body = {'blockWorked': transBlock, 'solution': solution, 'nonce': 0}
-            console.log('blockworked :::::', transBlock)
-            sendRequest(uri, body, 'POST', function() {
-              if(transBlock.secondTransaction) {
-                var solution = verifier.findSolution(transBlock.secondTransaction)
-                if(solution == transBlock.secondTransaction.value) {
-                  transBlock.secondTransaction.canBeSpent = true
-                  blockChain.push(transBlock.secondTransaction)
-                  var remoteAPI = '/api/solution'
-                    var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
-                    console.log('blockworked for second transaction :::', transBlock.secondTransaction)
-                    sendRequest(uri, body, 'POST')
-
-
-              }
+            var body = {'blockWorked': transBlock.secondTransaction, 'solution': solution, 'nonce': 0}
+            console.log('blockworked for second transaction :::', transBlock.secondTransaction)
+            if(worked) {
+              sendRequest(uri, body, 'POST')
             }
-          })
+          }
         }
-      })
-      // second transaction for your left over amount
-
+      }
     }
     else {
       res.status(400)
@@ -400,8 +397,7 @@ router.post('/transaction', function(req, res) {
     res.status(401)
     res.send('access to transaction denied due to already being spent')
   }
-})
-  // register all routes here
+})  // register all routes here
   //=========================================================
 
   //all our routes will be prefixed with /api
